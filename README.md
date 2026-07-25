@@ -16,7 +16,7 @@ This plugin generates such a BOM from your build:
 Add the following line to your `project/plugins.sbt` file:
 
 ```sbt
-addSbtPlugin("com.alejandrohdezma" % "sbt-bom" % "0.0.0")
+addSbtPlugin("com.alejandrohdezma" % "sbt-bom" % "0.1.0")
 ```
 
 ## Usage
