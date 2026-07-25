@@ -1,0 +1,3 @@
+# Every sbt cross-version is honoured when computing artifact names: binary, full, for3Use2_13, constant and
+# disabled (plain Java).
+> bom/assertPom

@@ -1,0 +1,4 @@
+# Per-Scala-version mode (the default): each `++` pass produces a pom suffixed with that Scala version, listing
+# entries suffixed for that version only. Projects that don't cross-build for the running version are skipped
+# with a comment in their place.
+> +bom/assertPom

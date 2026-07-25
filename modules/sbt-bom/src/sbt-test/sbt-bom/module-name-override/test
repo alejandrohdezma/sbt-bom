@@ -1,0 +1,2 @@
+# Projects are read through their `projectID`, so a `moduleName` override shows up in the BOM entry.
+> bom/assertPom

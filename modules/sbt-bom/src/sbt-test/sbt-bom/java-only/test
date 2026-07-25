@@ -1,0 +1,2 @@
+# A pure-Java build: no entry carries a Scala suffix anywhere.
+> bom/assertPom

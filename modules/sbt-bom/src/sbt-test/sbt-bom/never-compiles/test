@@ -1,0 +1,4 @@
+# Generating the BOM only reads settings from the included projects: a project that doesn't even compile can
+# still be listed, and the BOM publishes nothing but a pom.
+-> broken/compile
+> bom/assertPom

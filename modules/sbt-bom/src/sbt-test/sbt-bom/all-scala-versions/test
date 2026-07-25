@@ -1,0 +1,3 @@
+# Single-BOM mode (`crossVersion := CrossVersion.disabled`): one unsuffixed pom listing every Scala variant of
+# each entry — projects according to their own `crossScalaVersions`, external modules according to the BOM's.
+> bom/assertPom
