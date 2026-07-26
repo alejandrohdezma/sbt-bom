@@ -155,13 +155,16 @@ libraryDependencies += ("com.example" %% "my-library-bom" % "1.0.0").pomOnly()
 libraryDependencies += "com.example" %% "my-library-core" % "*"
 ```
 
-Alternatively, [sbt-dependencies](https://github.com/alejandrohdezma/sbt-dependencies) can read BOMs directly with its `bom` configuration (on both sbt 1.x and 2.x):
+Alternatively, [sbt-dependencies](https://github.com/alejandrohdezma/sbt-dependencies) offers the same experience on both sbt 1.x and 2.x: declare the BOM with its `bom` configuration and use `*` as the version of the dependencies it pins:
 
 ```hocon
 my-project = [
   "com.example::my-library-bom:1.0.0:bom"
+  "com.example::my-library-core:*"
 ]
 ```
+
+The BOM's pins are also applied to `dependencyOverrides`, so *transitive* dependencies align with the BOM too — matching Maven's `dependencyManagement` behavior. BOMs declared in its `common-settings` group are inherited by every project, and they also flow through `dependsOn`, so declaring the BOM once is enough for the whole build.
 
 ## Migrating from sbt-bill-of-materials
 
