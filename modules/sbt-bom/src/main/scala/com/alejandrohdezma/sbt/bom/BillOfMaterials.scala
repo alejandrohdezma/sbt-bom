@@ -49,19 +49,24 @@ private[bom] object BillOfMaterials {
     val available = crossScalaVersions.map(CrossVersion.binaryScalaVersion).contains(binaryVersion)
 
     CrossVersion(module.crossVersion, scalaVersion, binaryVersion) match {
-      case Some(_) if !available => Comment(s" ${module.name} is not available for Scala $binaryVersion ")
-      case cross                 => dependency(module.organization, cross.fold(module.name)(_(module.name)), module.revision)
+      case Some(_) if !available =>
+        Comment(s" ${module.name} is not available for Scala $binaryVersion ")
+
+      case cross =>
+        val name = cross.fold(module.name)(_(module.name))
+
+        dependency(module.organization, name, module.revision, exclusions(module, scalaVersion))
     }
   }
 
-  /** Renders a module as one `<dependency>` entry per Scala version. Versions producing the same artifact name collapse
-    * into a single entry, so a module that is not cross-built is rendered exactly once.
+  /** Renders a module as one `<dependency>` entry per Scala version. Versions producing the same artifact name and
+    * exclusions collapse into a single entry, so a module that is not cross-built is rendered exactly once.
     */
   def allScalaVersions(module: ModuleID, scalaVersions: Seq[String]): Seq[Node] =
     scalaVersions
-      .map(artifactId(module, _))
+      .map(scalaVersion => (artifactId(module, scalaVersion), exclusions(module, scalaVersion)))
       .distinct
-      .map(dependency(module.organization, _, module.revision))
+      .map { case (name, excluded) => dependency(module.organization, name, module.revision, excluded) }
 
   /** Returns the module's artifact name for the provided Scala version, applying the module's cross-version suffix
     * (none for modules that are not cross-built).
@@ -70,11 +75,42 @@ private[bom] object BillOfMaterials {
     CrossVersion(module.crossVersion, scalaVersion, CrossVersion.binaryScalaVersion(scalaVersion))
       .fold(module.name)(rename => rename(module.name))
 
-  private def dependency(groupId: String, artifactId: String, version: String): Elem =
+  /** Renders the module's `<exclusions>` block for the provided Scala version, or nothing when it has none.
+    *
+    * Each `InclExclRule` becomes an `<exclusion>`, with its cross-version applied to the artifact name so that the
+    * excluded coordinates match the Scala version of the entry holding them. Unset organizations and names become
+    * Maven's `*` wildcard. An intransitive module is rendered as a single `*`/`*` exclusion, Maven's way of expressing
+    * that nothing should be pulled transitively, which also subsumes any rule the module declares.
+    */
+  private def exclusions(module: ModuleID, scalaVersion: String): Seq[Node] = {
+    val rules =
+      if (!module.isTransitive) Seq(exclusion("*", "*"))
+      else
+        module.exclusions.map { rule =>
+          val cross = CrossVersion(rule.crossVersion, scalaVersion, CrossVersion.binaryScalaVersion(scalaVersion))
+
+          val name = rule.name match {
+            case "" | "*" => "*"
+            case name     => cross.fold(name)(rename => rename(name))
+          }
+
+          exclusion(if (rule.organization.isEmpty) "*" else rule.organization, name)
+        }
+
+    if (rules.isEmpty) Nil else Seq(<exclusions>{rules}</exclusions>)
+  }
+
+  private def exclusion(groupId: String, artifactId: String): Elem =
+    <exclusion>
+      <groupId>{groupId}</groupId>
+      <artifactId>{artifactId}</artifactId>
+    </exclusion>
+
+  private def dependency(groupId: String, artifactId: String, version: String, exclusions: Seq[Node]): Elem =
     <dependency>
       <groupId>{groupId}</groupId>
       <artifactId>{artifactId}</artifactId>
-      <version>{version}</version>
+      <version>{version}</version>{exclusions}
     </dependency>
 
 }

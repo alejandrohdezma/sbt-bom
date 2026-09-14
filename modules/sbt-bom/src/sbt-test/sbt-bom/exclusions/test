@@ -1,0 +1,3 @@
+# Modules declaring exclusions (or declared intransitive) carry them into their BOM entry as an `<exclusions>`
+# block, with cross-versioned exclusions suffixed for the Scala version of the entry holding them.
+> bom/assertPom
