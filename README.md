@@ -9,6 +9,7 @@ This plugin generates such a BOM from your build:
 - Two publishing modes: one BOM **per Scala version** (suffixed artifact) or a **single BOM** listing every Scala variant.
 - Every sbt cross-version is honoured when computing artifact names: `binary`, `full`, `for3Use2_13`, `constant` and plain Java modules.
 - Projects that don't cross-build for the running Scala version are skipped automatically (a comment is left in their place).
+- Exclusions declared on the included modules (and intransitive modules) are carried into the BOM entries.
 - Published for both **sbt 1.x and sbt 2.x**. A successor to Lightbend's [`sbt-bill-of-materials`](https://github.com/lightbend/sbt-bill-of-materials) (same keys), which isn't available for sbt 2.
 
 ## Installation
@@ -16,7 +17,7 @@ This plugin generates such a BOM from your build:
 Add the following line to your `project/plugins.sbt` file:
 
 ```sbt
-addSbtPlugin("com.alejandrohdezma" % "sbt-bom" % "0.1.1")
+addSbtPlugin("com.alejandrohdezma" % "sbt-bom" % "0.1.2")
 ```
 
 ## Usage
@@ -43,6 +44,7 @@ lazy val `my-library-bom` = project
   + [One BOM per Scala version (default)](#user-content-one-bom-per-scala-version-default)
   + [A single BOM for all Scala versions](#user-content-a-single-bom-for-all-scala-versions)
   + [Cross-version handling](#user-content-cross-version-handling)
+  + [Exclusions](#user-content-exclusions)
 - [Consuming the BOM](#consuming-the-bom)
 - [Migrating from sbt-bill-of-materials](#migrating-from-sbt-bill-of-materials)
 
@@ -129,6 +131,34 @@ The generated `<dependencyManagement>` section is also exposed as the `bomDepend
 
 </details>
 
+<details><summary><b id="exclusions">Exclusions</b></summary><br/>
+
+Exclusions declared on an included module are rendered as an `<exclusions>` block on its entry, so consumers of the BOM inherit them:
+
+```scala
+bomIncludeModules += ("org.tribuo" % "tribuo-onnx" % "4.3.2").exclude("com.google.protobuf", "protobuf-java")
+```
+
+```xml
+<dependency>
+  <groupId>org.tribuo</groupId>
+  <artifactId>tribuo-onnx</artifactId>
+  <version>4.3.2</version>
+  <exclusions>
+    <exclusion>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+    </exclusion>
+  </exclusions>
+</dependency>
+```
+
+An exclusion carrying a cross-version is suffixed for the Scala version of the entry holding it, so in single-BOM mode `cross-lib_2.13` excludes `other_2.13` while `cross-lib_3` excludes `other_3`. An exclusion without an organization or a name uses Maven's `*` wildcard, and an intransitive module is rendered as a single `*`/`*` exclusion, Maven's way of saying nothing should be pulled transitively.
+
+---
+
+</details>
+
 ## Consuming the BOM
 
 From Maven, import it in your `<dependencyManagement>` section:
@@ -175,6 +205,7 @@ Main differences:
 - Published for sbt 2.x as well as sbt 1.x.
 - Projects are read through their `projectID`, so `moduleName` overrides are honoured.
 - All cross-versions are supported (`full`, `for3Use2_13`, `constant`...), not just `binary` and `disabled`.
+- Exclusions and intransitive modules are carried into the BOM entries.
 
 ## Contributors to this project
 
