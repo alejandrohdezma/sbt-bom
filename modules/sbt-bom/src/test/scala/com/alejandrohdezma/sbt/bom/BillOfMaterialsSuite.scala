@@ -113,6 +113,91 @@ class BillOfMaterialsSuite extends FunSuite {
     assertEquals(obtained.toList.map(render), expected)
   }
 
+  test("perScalaVersion renders the module's exclusions") {
+    val excluding = module.cross(CrossVersion.binary).exclude("com.google.protobuf", "protobuf-java")
+
+    val obtained = BillOfMaterials.perScalaVersion(excluding, "3.3.7", List("3.3.7"))
+
+    val expected =
+      "<dependency><groupId>com.example</groupId><artifactId>lib_3</artifactId><version>1.0.0</version>" +
+        "<exclusions><exclusion><groupId>com.google.protobuf</groupId>" +
+        "<artifactId>protobuf-java</artifactId></exclusion></exclusions></dependency>"
+
+    assertEquals(render(obtained), expected)
+  }
+
+  test("perScalaVersion suffixes cross-versioned exclusions for the Scala version") {
+    val excluding = module.excludeAll(ExclusionRule("com.example", "other").withCrossVersion(CrossVersion.binary))
+
+    val obtained = BillOfMaterials.perScalaVersion(excluding, "2.13.16", List("2.13.16"))
+
+    val expected =
+      "<dependency><groupId>com.example</groupId><artifactId>lib</artifactId><version>1.0.0</version>" +
+        "<exclusions><exclusion><groupId>com.example</groupId>" +
+        "<artifactId>other_2.13</artifactId></exclusion></exclusions></dependency>"
+
+    assertEquals(render(obtained), expected)
+  }
+
+  test("perScalaVersion renders an exclusion without a name as a wildcard") {
+    val excluding = module.excludeAll(ExclusionRule().withOrganization("com.google.protobuf").withName(""))
+
+    val obtained = BillOfMaterials.perScalaVersion(excluding, "3.3.7", List("3.3.7"))
+
+    val expected =
+      "<dependency><groupId>com.example</groupId><artifactId>lib</artifactId><version>1.0.0</version>" +
+        "<exclusions><exclusion><groupId>com.google.protobuf</groupId>" +
+        "<artifactId>*</artifactId></exclusion></exclusions></dependency>"
+
+    assertEquals(render(obtained), expected)
+  }
+
+  test("perScalaVersion renders an intransitive module as a wildcard exclusion") {
+    val obtained = BillOfMaterials.perScalaVersion(module.intransitive(), "3.3.7", List("3.3.7"))
+
+    val expected =
+      "<dependency><groupId>com.example</groupId><artifactId>lib</artifactId><version>1.0.0</version>" +
+        "<exclusions><exclusion><groupId>*</groupId>" +
+        "<artifactId>*</artifactId></exclusion></exclusions></dependency>"
+
+    assertEquals(render(obtained), expected)
+  }
+
+  test("allScalaVersions suffixes cross-versioned exclusions per Scala version") {
+    val excluding = module
+      .cross(CrossVersion.binary)
+      .excludeAll(ExclusionRule("com.example", "other").withCrossVersion(CrossVersion.binary))
+
+    val obtained = BillOfMaterials.allScalaVersions(excluding, List("2.13.16", "3.3.7"))
+
+    val expected = List(
+      "<dependency><groupId>com.example</groupId><artifactId>lib_2.13</artifactId><version>1.0.0</version>" +
+        "<exclusions><exclusion><groupId>com.example</groupId>" +
+        "<artifactId>other_2.13</artifactId></exclusion></exclusions></dependency>",
+      "<dependency><groupId>com.example</groupId><artifactId>lib_3</artifactId><version>1.0.0</version>" +
+        "<exclusions><exclusion><groupId>com.example</groupId>" +
+        "<artifactId>other_3</artifactId></exclusion></exclusions></dependency>"
+    )
+
+    assertEquals(obtained.toList.map(render), expected)
+  }
+
+  test("allScalaVersions renders every exclusion of a module") {
+    val excluding = module.exclude("com.example", "first").exclude("com.example", "second")
+
+    val obtained = BillOfMaterials.allScalaVersions(excluding, List("2.13.16", "3.3.7"))
+
+    val expected = List(
+      "<dependency><groupId>com.example</groupId><artifactId>lib</artifactId><version>1.0.0</version>" +
+        "<exclusions>" +
+        "<exclusion><groupId>com.example</groupId><artifactId>first</artifactId></exclusion>" +
+        "<exclusion><groupId>com.example</groupId><artifactId>second</artifactId></exclusion>" +
+        "</exclusions></dependency>"
+    )
+
+    assertEquals(obtained.toList.map(render), expected)
+  }
+
   test("dependencyManagement wraps the provided entries") {
     val entries = BillOfMaterials.allScalaVersions(module.cross(CrossVersion.binary), List("2.13.16", "3.3.7"))
 
