@@ -198,6 +198,51 @@ class BillOfMaterialsSuite extends FunSuite {
     assertEquals(obtained.toList.map(render), expected)
   }
 
+  test("overridden replaces the revision of a module matching an override") {
+    val overrides = List("com.example" %% "lib" % "2.0.0", "com.example" % "other" % "3.0.0")
+
+    val obtained = List(module, module.cross(CrossVersion.binary), module.withName("unrelated"))
+      .map(BillOfMaterials.overridden(_, overrides))
+      .map(_.revision)
+
+    assertEquals(obtained, List("2.0.0", "2.0.0", "1.0.0"))
+  }
+
+  test("uniquePerArtifact drops repeated entries") {
+    val entries = List(module, module, module.withName("other")).map(BillOfMaterials.perScalaVersion(_, "3.3.7", Nil))
+
+    val obtained = BillOfMaterials.uniquePerArtifact(entries)
+
+    val expected = List(
+      "<dependency><groupId>com.example</groupId><artifactId>lib</artifactId><version>1.0.0</version></dependency>",
+      "<dependency><groupId>com.example</groupId><artifactId>other</artifactId><version>1.0.0</version></dependency>"
+    )
+
+    assertEquals(obtained.toList.map(render), expected)
+  }
+
+  test("uniquePerArtifact fails when an artifact is pinned to several versions") {
+    val entries = List(module, module.withRevision("2.0.0")).map(BillOfMaterials.perScalaVersion(_, "3.3.7", Nil))
+
+    val error = intercept[RuntimeException](BillOfMaterials.uniquePerArtifact(entries))
+
+    val expected =
+      """|The BOM pins the same artifact more than once:
+         |  com.example:lib is pinned to 1.0.0, 2.0.0
+         |Choose a version with `dependencyOverrides` on the BOM project, or remove all but one of them from `bomIncludeModules` or `bomIncludeProjects`.""".stripMargin
+
+    assertEquals(error.getMessage, expected)
+  }
+
+  test("uniquePerArtifact fails when an artifact is pinned with different exclusions") {
+    val entries =
+      List(module, module.exclude("com.example", "first")).map(BillOfMaterials.perScalaVersion(_, "3.3.7", Nil))
+
+    val error = intercept[RuntimeException](BillOfMaterials.uniquePerArtifact(entries))
+
+    assert(error.getMessage.contains("com.example:lib is pinned to 1.0.0 with different exclusions"), error.getMessage)
+  }
+
   test("dependencyManagement wraps the provided entries") {
     val entries = BillOfMaterials.allScalaVersions(module.cross(CrossVersion.binary), List("2.13.16", "3.3.7"))
 

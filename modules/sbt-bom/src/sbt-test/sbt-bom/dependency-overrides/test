@@ -1,0 +1,3 @@
+# The BOM project's `dependencyOverrides` choose the version when two entries pin the same artifact differently, and
+# replace the version of every Scala variant of a matching module.
+> bom/assertPom

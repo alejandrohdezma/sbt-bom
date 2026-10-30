@@ -36,6 +36,44 @@ private[bom] object BillOfMaterials {
       </dependencies>
     </dependencyManagement>
 
+  /** Returns the module with the revision of the override for the same organization and name, if any. Overrides match
+    * regardless of cross-version, so `"org" %% "lib" % "1.0.0"` replaces the revision of every Scala variant of `lib`.
+    */
+  def overridden(module: ModuleID, overrides: Seq[ModuleID]): ModuleID =
+    overrides
+      .map(o => (o.organization, o.name) -> o.revision)
+      .toMap
+      .get((module.organization, module.name))
+      .fold(module)(module.withRevision)
+
+  /** Drops repeated entries and fails when two `<dependency>` entries pin the same `groupId:artifactId` differently
+    * (another version or other exclusions), since a consumer could not tell which one applies.
+    */
+  def uniquePerArtifact(entries: Seq[Node]): Seq[Node] = {
+    val unique = entries.distinct
+
+    val conflicts = unique.collect { case entry @ Elem(_, "dependency", _, _, _*) => entry }
+      .groupBy(entry => s"${(entry \ "groupId").text}:${(entry \ "artifactId").text}")
+      .collect {
+        case (artifact, pins) if pins.size > 1 =>
+          val versions = pins.map(pin => (pin \ "version").text).distinct
+
+          if (versions.size > 1) s"$artifact is pinned to ${versions.mkString(", ")}"
+          else s"$artifact is pinned to ${versions.mkString} with different exclusions"
+      }
+      .toList
+      .sorted
+
+    if (conflicts.nonEmpty)
+      sys.error(
+        conflicts.mkString("The BOM pins the same artifact more than once:\n  ", "\n  ", "\n") +
+          "Choose a version with `dependencyOverrides` on the BOM project, or remove all but one of them from " +
+          "`bomIncludeModules` or `bomIncludeProjects`."
+      )
+
+    unique
+  }
+
   /** Renders a module as a single `<dependency>` entry for the provided Scala version.
     *
     * Cross-built modules get their artifact name suffixed for that Scala version (following the module's own
