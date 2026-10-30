@@ -10,6 +10,7 @@ This plugin generates such a BOM from your build:
 - Every sbt cross-version is honoured when computing artifact names: `binary`, `full`, `for3Use2_13`, `constant` and plain Java modules.
 - Projects that don't cross-build for the running Scala version are skipped automatically (a comment is left in their place).
 - Exclusions declared on the included modules (and intransitive modules) are carried into the BOM entries.
+- Each artifact is pinned once: when two entries pin the same artifact differently, [`dependencyOverrides` choose the version](#user-content-conflicting-versions), and without one the build fails instead of publishing an ambiguous BOM.
 - Published for both **sbt 1.x and sbt 2.x**. A successor to Lightbend's [`sbt-bill-of-materials`](https://github.com/lightbend/sbt-bill-of-materials) (same keys), which isn't available for sbt 2.
 
 ## Installation
@@ -126,6 +127,31 @@ Artifact names are computed with sbt's own cross-version logic, so every flavor 
 | `"com.example" % "lib" % "1.0.0"` | `lib` |
 
 The generated `<dependencyManagement>` section is also exposed as the `bomDependenciesListing` setting, in case you want to inspect it or post-process it before it's appended to `pomExtra`.
+
+---
+
+</details>
+
+<details><summary><b id="conflicting-versions">Conflicting versions</b></summary><br/>
+
+A BOM must pin each artifact once. When two entries render the same `groupId:artifactId` with different versions or exclusions (typically your own pins next to the flattened entries of an external BOM), the build fails:
+
+```
+The BOM pins the same artifact more than once:
+  com.google.protobuf:protobuf-java is pinned to 4.36.1, 4.33.6
+Choose a version with `dependencyOverrides` on the BOM project, or remove all but one of them from `bomIncludeModules` or `bomIncludeProjects`.
+```
+
+Choose the version with `dependencyOverrides` on the BOM project. An override replaces the version of every entry for that artifact, so the duplicates collapse into one:
+
+```scala
+lazy val bom = project
+  .enablePlugins(BomPlugin)
+  .settings(bomIncludeModules ++= myPins ++ externalBomEntries)
+  .settings(dependencyOverrides += "com.google.protobuf" % "protobuf-java" % "4.36.1")
+```
+
+Overrides match by organization and name, regardless of cross-version: `"com.example" %% "lib" % "2.0.0"` sets the version of every Scala variant of `lib` in the BOM. They apply even when there is no conflict, so they can also bump a single entry. They don't choose exclusions: entries for the same artifact with different exclusions still fail.
 
 ---
 

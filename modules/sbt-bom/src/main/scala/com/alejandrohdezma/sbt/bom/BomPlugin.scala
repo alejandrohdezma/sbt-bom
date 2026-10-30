@@ -84,12 +84,15 @@ object BomPlugin extends AutoPlugin {
 
   /** The `<dependencyManagement>` block for the BOM pom. Concatenates each `bomIncludeProjects` entry's `projectID`
     * with `bomIncludeModules` and renders them through `BillOfMaterials`, either once for the current Scala version or
-    * once per Scala version depending on the BOM project's `crossVersion`. A `settingDyn` because it fans out to
+    * once per Scala version depending on the BOM project's `crossVersion`. The BOM project's `dependencyOverrides`
+    * replace the revision of every matching entry, which is how a version is chosen when two entries pin the same
+    * artifact differently; without one, such a conflict fails the build. A `settingDyn` because it fans out to
     * per-project `projectID`/`crossScalaVersions` settings.
     */
   private val dependencyManagement: Def.Initialize[Elem] = Def.settingDyn {
     val currentScalaVersion   = scalaVersion.value
     val bomCrossScalaVersions = crossScalaVersions.value
+    val overrides             = dependencyOverrides.value
 
     val singleBom =
       CrossVersion(crossVersion.value, currentScalaVersion, scalaBinaryVersion.value).isEmpty
@@ -98,10 +101,13 @@ object BomPlugin extends AutoPlugin {
       .map(project => Def.setting((project / projectID).value -> (project / crossScalaVersions).value))
       .join
       .apply(bomIncludeModules.value.map(_ -> bomCrossScalaVersions) ++ _)
-      .apply(_.flatMap { case (module, scalaVersions) =>
+      .apply(_.flatMap { case (included, scalaVersions) =>
+        val module = BillOfMaterials.overridden(included, overrides)
+
         if (singleBom) BillOfMaterials.allScalaVersions(module, scalaVersions)
         else List(BillOfMaterials.perScalaVersion(module, currentScalaVersion, scalaVersions))
       })
+      .apply(BillOfMaterials.uniquePerArtifact)
       .apply(BillOfMaterials.dependencyManagement)
   }
 
