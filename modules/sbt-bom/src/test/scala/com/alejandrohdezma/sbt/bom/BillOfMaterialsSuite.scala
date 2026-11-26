@@ -198,6 +198,30 @@ class BillOfMaterialsSuite extends FunSuite {
     assertEquals(obtained.toList.map(render), expected)
   }
 
+  test("perScalaVersion renders a pom-only module as an imported BOM") {
+    val obtained = BillOfMaterials.perScalaVersion(module.pomOnly(), "3.3.7", List("3.3.7"))
+
+    val expected =
+      "<dependency><groupId>com.example</groupId><artifactId>lib</artifactId><version>1.0.0</version>" +
+        "<type>pom</type><scope>import</scope></dependency>"
+
+    assertEquals(render(obtained), expected)
+  }
+
+  test("allScalaVersions renders a cross-built pom-only module as one imported BOM per Scala version") {
+    val obtained =
+      BillOfMaterials.allScalaVersions(module.cross(CrossVersion.binary).pomOnly(), List("2.13.16", "3.3.7"))
+
+    val expected = List(
+      "<dependency><groupId>com.example</groupId><artifactId>lib_2.13</artifactId><version>1.0.0</version>" +
+        "<type>pom</type><scope>import</scope></dependency>",
+      "<dependency><groupId>com.example</groupId><artifactId>lib_3</artifactId><version>1.0.0</version>" +
+        "<type>pom</type><scope>import</scope></dependency>"
+    )
+
+    assertEquals(obtained.toList.map(render), expected)
+  }
+
   test("overridden replaces the revision of a module matching an override") {
     val overrides = List("com.example" %% "lib" % "2.0.0", "com.example" % "other" % "3.0.0")
 
