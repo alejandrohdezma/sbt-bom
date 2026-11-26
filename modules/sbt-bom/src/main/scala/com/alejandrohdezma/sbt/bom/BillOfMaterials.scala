@@ -93,7 +93,7 @@ private[bom] object BillOfMaterials {
       case cross =>
         val name = cross.fold(module.name)(_(module.name))
 
-        dependency(module.organization, name, module.revision, exclusions(module, scalaVersion))
+        dependency(module.organization, name, module.revision, exclusions(module, scalaVersion), isPom(module))
     }
   }
 
@@ -104,7 +104,7 @@ private[bom] object BillOfMaterials {
     scalaVersions
       .map(scalaVersion => (artifactId(module, scalaVersion), exclusions(module, scalaVersion)))
       .distinct
-      .map { case (name, excluded) => dependency(module.organization, name, module.revision, excluded) }
+      .map { case (name, excluded) => dependency(module.organization, name, module.revision, excluded, isPom(module)) }
 
   /** Returns the module's artifact name for the provided Scala version, applying the module's cross-version suffix
     * (none for modules that are not cross-built).
@@ -138,17 +138,41 @@ private[bom] object BillOfMaterials {
     if (rules.isEmpty) Nil else Seq(<exclusions>{rules}</exclusions>)
   }
 
+  // scalafix:off DisableSyntax.==
+  private def isPom(module: ModuleID): Boolean =
+    module.explicitArtifacts.size == 1 && module.explicitArtifacts.headOption.exists(_.`type` == "pom")
+  // scalafix:on DisableSyntax.==
+
   private def exclusion(groupId: String, artifactId: String): Elem =
     <exclusion>
       <groupId>{groupId}</groupId>
       <artifactId>{artifactId}</artifactId>
     </exclusion>
 
-  private def dependency(groupId: String, artifactId: String, version: String, exclusions: Seq[Node]): Elem =
+  private def dependency(
+      groupId: String,
+      artifactId: String,
+      version: String,
+      exclusions: Seq[Node],
+      isPom: Boolean
+  ): Elem =
+    if (isPom) dependencyPom(groupId, artifactId, version, exclusions)
+    else dependencyDefault(groupId, artifactId, version, exclusions)
+
+  private def dependencyDefault(groupId: String, artifactId: String, version: String, exclusions: Seq[Node]): Elem =
     <dependency>
       <groupId>{groupId}</groupId>
       <artifactId>{artifactId}</artifactId>
       <version>{version}</version>{exclusions}
+    </dependency>
+
+  private def dependencyPom(groupId: String, artifactId: String, version: String, exclusions: Seq[Node]): Elem =
+    <dependency>
+      <groupId>{groupId}</groupId>
+      <artifactId>{artifactId}</artifactId>
+      <version>{version}</version>
+      <type>pom</type>
+      <scope>import</scope>{exclusions}
     </dependency>
 
 }

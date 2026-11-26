@@ -1,0 +1,4 @@
+# Modules declared with `pomOnly()` are imported as BOMs in both generation modes. Regular modules do not get
+# `<type>` or `<scope>` tags.
+> perScalaVersion/assertPom
+> allScalaVersions/assertPom

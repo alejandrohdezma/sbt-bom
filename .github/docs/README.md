@@ -45,6 +45,7 @@ lazy val `my-library-bom` = project
   + [One BOM per Scala version (default)](#user-content-one-bom-per-scala-version-default)
   + [A single BOM for all Scala versions](#user-content-a-single-bom-for-all-scala-versions)
   + [Cross-version handling](#user-content-cross-version-handling)
+  + [Importing other BOMs](#user-content-importing-other-boms)
   + [Exclusions](#user-content-exclusions)
 - [Consuming the BOM](#consuming-the-bom)
 - [Migrating from sbt-bill-of-materials](#migrating-from-sbt-bill-of-materials)
@@ -127,6 +128,32 @@ Artifact names are computed with sbt's own cross-version logic, so every flavor 
 | `"com.example" % "lib" % "1.0.0"` | `lib` |
 
 The generated `<dependencyManagement>` section is also exposed as the `bomDependenciesListing` setting, in case you want to inspect it or post-process it before it's appended to `pomExtra`.
+
+---
+
+</details>
+
+<details><summary><b id="importing-other-boms">Importing other BOMs</b></summary><br/>
+
+Declare an included module with `.pomOnly()` to import another BOM into the generated BOM instead of adding a regular version pin:
+
+```scala
+bomIncludeModules += ("io.netty" % "netty-bom" % "4.2.21.Final").pomOnly()
+```
+
+The generated entry contains both `<type>pom</type>` and `<scope>import</scope>`:
+
+```xml
+<dependency>
+  <groupId>io.netty</groupId>
+  <artifactId>netty-bom</artifactId>
+  <version>4.2.21.Final</version>
+  <type>pom</type>
+  <scope>import</scope>
+</dependency>
+```
+
+Both tags are required for a BOM inside another BOM; see Maven's documentation of the [import scope](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html#Dependency_Scope). sbt 2, Maven and Gradle support this structure and apply the imported BOM's dependency constraints to consumers of your BOM. Regular modules are emitted without these tags.
 
 ---
 
