@@ -45,6 +45,7 @@ lazy val `my-library-bom` = project
   + [One BOM per Scala version (default)](#user-content-one-bom-per-scala-version-default)
   + [A single BOM for all Scala versions](#user-content-a-single-bom-for-all-scala-versions)
   + [Cross-version handling](#user-content-cross-version-handling)
+  + [Importing other BOMs](#user-content-importing-other-boms)
   + [Exclusions](#user-content-exclusions)
 - [Consuming the BOM](#consuming-the-bom)
 - [Migrating from sbt-bill-of-materials](#migrating-from-sbt-bill-of-materials)
@@ -127,6 +128,38 @@ Artifact names are computed with sbt's own cross-version logic, so every flavor 
 | `"com.example" % "lib" % "1.0.0"` | `lib` |
 
 The generated `<dependencyManagement>` section is also exposed as the `bomDependenciesListing` setting, in case you want to inspect it or post-process it before it's appended to `pomExtra`.
+
+---
+
+</details>
+
+<details><summary><b id="importing-other-boms">Importing other BOMs</b></summary><br/>
+
+Declare an included module with `.pomOnly()` to import another BOM into the generated BOM instead of adding a regular version pin:
+
+```scala
+bomIncludeModules += ("io.netty" % "netty-bom" % "4.2.21.Final").pomOnly()
+```
+
+The generated entry contains both `<type>pom</type>` and `<scope>import</scope>`:
+
+```xml
+<dependency>
+  <groupId>io.netty</groupId>
+  <artifactId>netty-bom</artifactId>
+  <version>4.2.21.Final</version>
+  <type>pom</type>
+  <scope>import</scope>
+</dependency>
+```
+
+Both tags are required for a BOM inside another BOM; see Maven's documentation of the [import scope](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html#Dependency_Scope). sbt 2, Maven, Gradle and [sbt-dependencies](https://github.com/alejandrohdezma/sbt-dependencies) (on sbt 1 and 2) support this structure and apply the imported BOM's dependency constraints to consumers of your BOM. Regular modules are emitted without these tags.
+
+Exclusions don't apply to an import, so a pom-only module is rendered without them, even when it is intransitive.
+
+Only a module whose single artifact is the pom is imported. A module that also declares other artifacts (`.pomOnly().jar()`, `.classifier(...)`, `.withSources()`...) is not a pure BOM, so it is pinned as a regular dependency, and the build logs a warning.
+
+The [conflict check](#user-content-conflicting-versions) only sees the entries of your BOM, not the contents of the BOMs it imports. When one of your pins and an imported BOM disagree, the build doesn't fail: your pin wins, following Maven's rule that a direct entry beats an imported one. Add the external BOM's entries to `bomIncludeModules` instead of importing it when you want those conflicts to fail the build.
 
 ---
 

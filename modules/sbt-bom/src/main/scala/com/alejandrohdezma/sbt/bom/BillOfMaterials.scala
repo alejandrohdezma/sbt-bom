@@ -93,7 +93,7 @@ private[bom] object BillOfMaterials {
       case cross =>
         val name = cross.fold(module.name)(_(module.name))
 
-        dependency(module.organization, name, module.revision, exclusions(module, scalaVersion))
+        dependency(module, name, exclusions(module, scalaVersion))
     }
   }
 
@@ -104,7 +104,7 @@ private[bom] object BillOfMaterials {
     scalaVersions
       .map(scalaVersion => (artifactId(module, scalaVersion), exclusions(module, scalaVersion)))
       .distinct
-      .map { case (name, excluded) => dependency(module.organization, name, module.revision, excluded) }
+      .map { case (name, excluded) => dependency(module, name, excluded) }
 
   /** Returns the module's artifact name for the provided Scala version, applying the module's cross-version suffix
     * (none for modules that are not cross-built).
@@ -138,17 +138,35 @@ private[bom] object BillOfMaterials {
     if (rules.isEmpty) Nil else Seq(<exclusions>{rules}</exclusions>)
   }
 
+  /** Whether the module declares a `pom` artifact next to other artifacts (`.pomOnly().jar()`, `.withSources()`...).
+    * Such a module is not a pure BOM, so it is pinned as a regular dependency instead of being imported.
+    */
+  def mixesPomWithOtherArtifacts(module: ModuleID): Boolean = {
+    val types = module.explicitArtifacts.map(_.`type`)
+
+    types.size > 1 && types.contains("pom")
+  }
+
+  private def isPom(module: ModuleID): Boolean =
+    module.explicitArtifacts.map(_.`type`) match {
+      case Seq("pom") => true
+      case _          => false
+    }
+
   private def exclusion(groupId: String, artifactId: String): Elem =
     <exclusion>
       <groupId>{groupId}</groupId>
       <artifactId>{artifactId}</artifactId>
     </exclusion>
 
-  private def dependency(groupId: String, artifactId: String, version: String, exclusions: Seq[Node]): Elem =
+  private def dependency(module: ModuleID, artifactId: String, exclusions: Seq[Node]): Elem = {
+    val extra = if (isPom(module)) Seq(<type>pom</type>, <scope>import</scope>) else exclusions
+
     <dependency>
-      <groupId>{groupId}</groupId>
+      <groupId>{module.organization}</groupId>
       <artifactId>{artifactId}</artifactId>
-      <version>{version}</version>{exclusions}
+      <version>{module.revision}</version>{extra}
     </dependency>
+  }
 
 }
