@@ -151,12 +151,12 @@ private[bom] object BillOfMaterials {
     </exclusion>
 
   private def dependency(module: ModuleID, artifactId: String, exclusions: Seq[Node]): Elem = {
-    val imported = if (isPom(module)) Seq(<type>pom</type>, <scope>import</scope>) else Nil
+    val extra = if (isPom(module)) Seq(<type>pom</type>, <scope>import</scope>) else exclusions
 
     <dependency>
       <groupId>{module.organization}</groupId>
       <artifactId>{artifactId}</artifactId>
-      <version>{module.revision}</version>{imported}{exclusions}
+      <version>{module.revision}</version>{extra}
     </dependency>
   }
 

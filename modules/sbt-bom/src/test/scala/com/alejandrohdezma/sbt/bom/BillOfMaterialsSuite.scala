@@ -208,6 +208,18 @@ class BillOfMaterialsSuite extends FunSuite {
     assertEquals(render(obtained), expected)
   }
 
+  test("perScalaVersion renders a pom-only module without its exclusions") {
+    val excluding = module.pomOnly().intransitive().exclude("com.example", "other")
+
+    val obtained = BillOfMaterials.perScalaVersion(excluding, "3.3.7", List("3.3.7"))
+
+    val expected =
+      "<dependency><groupId>com.example</groupId><artifactId>lib</artifactId><version>1.0.0</version>" +
+        "<type>pom</type><scope>import</scope></dependency>"
+
+    assertEquals(render(obtained), expected)
+  }
+
   test("allScalaVersions renders a cross-built pom-only module as one imported BOM per Scala version") {
     val obtained =
       BillOfMaterials.allScalaVersions(module.cross(CrossVersion.binary).pomOnly(), List("2.13.16", "3.3.7"))

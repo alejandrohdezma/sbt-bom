@@ -155,6 +155,8 @@ The generated entry contains both `<type>pom</type>` and `<scope>import</scope>`
 
 Both tags are required for a BOM inside another BOM; see Maven's documentation of the [import scope](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html#Dependency_Scope). sbt 2, Maven and Gradle support this structure and apply the imported BOM's dependency constraints to consumers of your BOM. Regular modules are emitted without these tags.
 
+Exclusions don't apply to an import, so a pom-only module is rendered without them, even when it is intransitive.
+
 ---
 
 </details>
