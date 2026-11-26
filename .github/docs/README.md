@@ -153,11 +153,13 @@ The generated entry contains both `<type>pom</type>` and `<scope>import</scope>`
 </dependency>
 ```
 
-Both tags are required for a BOM inside another BOM; see Maven's documentation of the [import scope](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html#Dependency_Scope). sbt 2, Maven and Gradle support this structure and apply the imported BOM's dependency constraints to consumers of your BOM. Regular modules are emitted without these tags.
+Both tags are required for a BOM inside another BOM; see Maven's documentation of the [import scope](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html#Dependency_Scope). sbt 2, Maven, Gradle and [sbt-dependencies](https://github.com/alejandrohdezma/sbt-dependencies) (on sbt 1 and 2) support this structure and apply the imported BOM's dependency constraints to consumers of your BOM. Regular modules are emitted without these tags.
 
 Exclusions don't apply to an import, so a pom-only module is rendered without them, even when it is intransitive.
 
 Only a module whose single artifact is the pom is imported. A module that also declares other artifacts (`.pomOnly().jar()`, `.classifier(...)`, `.withSources()`...) is not a pure BOM, so it is pinned as a regular dependency, and the build logs a warning.
+
+The [conflict check](#user-content-conflicting-versions) only sees the entries of your BOM, not the contents of the BOMs it imports. When one of your pins and an imported BOM disagree, the build doesn't fail: your pin wins, following Maven's rule that a direct entry beats an imported one. Add the external BOM's entries to `bomIncludeModules` instead of importing it when you want those conflicts to fail the build.
 
 ---
 
