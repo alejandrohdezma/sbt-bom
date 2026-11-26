@@ -157,6 +157,8 @@ Both tags are required for a BOM inside another BOM; see Maven's documentation o
 
 Exclusions don't apply to an import, so a pom-only module is rendered without them, even when it is intransitive.
 
+Only a module whose single artifact is the pom is imported. A module that also declares other artifacts (`.pomOnly().jar()`, `.classifier(...)`, `.withSources()`...) is not a pure BOM, so it is pinned as a regular dependency, and the build logs a warning.
+
 ---
 
 </details>

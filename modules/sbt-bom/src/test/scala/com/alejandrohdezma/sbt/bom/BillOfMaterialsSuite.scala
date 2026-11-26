@@ -234,6 +234,31 @@ class BillOfMaterialsSuite extends FunSuite {
     assertEquals(obtained.toList.map(render), expected)
   }
 
+  test("perScalaVersion renders a module with a pom and other artifacts as a regular pin") {
+    val obtained = BillOfMaterials.perScalaVersion(module.pomOnly().jar(), "3.3.7", List("3.3.7"))
+
+    val expected =
+      "<dependency><groupId>com.example</groupId><artifactId>lib</artifactId><version>1.0.0</version></dependency>"
+
+    assertEquals(render(obtained), expected)
+  }
+
+  test("mixesPomWithOtherArtifacts detects a pom artifact declared next to other artifacts") {
+    val modules = List(
+      module,
+      module.pomOnly(),
+      module.jar(),
+      module.classifier("x"),
+      module.pomOnly().jar(),
+      module.pomOnly().classifier("x"),
+      module.pomOnly().withSources()
+    )
+
+    val obtained = modules.map(BillOfMaterials.mixesPomWithOtherArtifacts)
+
+    assertEquals(obtained, List(false, false, false, false, true, true, true))
+  }
+
   test("overridden replaces the revision of a module matching an override") {
     val overrides = List("com.example" %% "lib" % "2.0.0", "com.example" % "other" % "3.0.0")
 

@@ -138,6 +138,15 @@ private[bom] object BillOfMaterials {
     if (rules.isEmpty) Nil else Seq(<exclusions>{rules}</exclusions>)
   }
 
+  /** Whether the module declares a `pom` artifact next to other artifacts (`.pomOnly().jar()`, `.withSources()`...).
+    * Such a module is not a pure BOM, so it is pinned as a regular dependency instead of being imported.
+    */
+  def mixesPomWithOtherArtifacts(module: ModuleID): Boolean = {
+    val types = module.explicitArtifacts.map(_.`type`)
+
+    types.size > 1 && types.contains("pom")
+  }
+
   private def isPom(module: ModuleID): Boolean =
     module.explicitArtifacts.map(_.`type`) match {
       case Seq("pom") => true

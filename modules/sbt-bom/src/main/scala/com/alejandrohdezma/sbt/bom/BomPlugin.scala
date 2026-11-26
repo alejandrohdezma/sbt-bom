@@ -93,6 +93,14 @@ object BomPlugin extends AutoPlugin {
     val currentScalaVersion   = scalaVersion.value
     val bomCrossScalaVersions = crossScalaVersions.value
     val overrides             = dependencyOverrides.value
+    val log                   = sLog.value
+
+    bomIncludeModules.value.filter(BillOfMaterials.mixesPomWithOtherArtifacts).foreach { module =>
+      log.warn {
+        s"${module.organization}:${module.name}:${module.revision} declares a pom artifact next to other artifacts, " +
+          "so the BOM pins it as a regular dependency instead of importing it. Use `.pomOnly()` alone to import it."
+      }
+    }
 
     val singleBom =
       CrossVersion(crossVersion.value, currentScalaVersion, scalaBinaryVersion.value).isEmpty
